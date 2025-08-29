@@ -811,12 +811,12 @@ _CONFIGS = [
         ema_decay=None,
     ),
     TrainConfig(
-        name="pi0_fast_positronic_lowmem",
+        name="pi0_positronic_lowmem",
         # Here is an example of loading a pi0-FAST model for LoRA finetuning.
         # For setting action_dim, action_horizon, and max_token_len, see the comments above.
         model=pi0.Pi0Config(paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
         data=LeRobotPositronicDataConfig(
-            repo_id="stack-cubes-pimm-lerobot-joints-absolutepos",
+            repo_id="stack-cubes-pimm-lerobot-joints-absolutepos-fix-prompt-larger",
             base_config=DataConfig(prompt_from_task=True),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
@@ -828,7 +828,21 @@ _CONFIGS = [
         ).get_freeze_filter(),
         # Turn off EMA for LoRA finetuning.
         ema_decay=None,
-        batch_size=16,
+    ),
+        TrainConfig(
+        name="pi0_positronic",
+        # Here is an example of loading a pi0-FAST model for LoRA finetuning.
+        # For setting action_dim, action_horizon, and max_token_len, see the comments above.
+        model=pi0.Pi0Config(),
+
+        data=LeRobotPositronicDataConfig(
+            repo_id="stack-cubes-pimm-lerobot-joints-absolutepos-fix-prompt-larger",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
     ),
     TrainConfig(
         name="pi05_libero",
