@@ -816,7 +816,7 @@ _CONFIGS = [
         # For setting action_dim, action_horizon, and max_token_len, see the comments above.
         model=pi0.Pi0Config(paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
         data=LeRobotPositronicDataConfig(
-            repo_id="stack-cubes-pimm-lerobot-joints-absolutepos-fix-prompt-larger",
+            repo_id="stack-cubes-pimm-lerobot-ee-316ep-fixstate",
             base_config=DataConfig(prompt_from_task=True),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
@@ -836,7 +836,7 @@ _CONFIGS = [
         model=pi0.Pi0Config(),
 
         data=LeRobotPositronicDataConfig(
-            repo_id="stack-cubes-pimm-lerobot-joints-absolutepos-fix-prompt-larger",
+            repo_id="stack-cubes-pimm-lerobot-ee-316ep-fixstate",
             base_config=DataConfig(prompt_from_task=True),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
