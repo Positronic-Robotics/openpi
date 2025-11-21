@@ -108,6 +108,9 @@ def main(args: Args) -> None:
     local_ip = socket.gethostbyname(hostname)
     logging.info("Creating server (host: %s, ip: %s)", hostname, local_ip)
 
+    policy_metadata["config"] = args.policy.config
+    policy_metadata["directory"] = args.policy.dir
+
     server = websocket_policy_server.WebsocketPolicyServer(
         policy=policy,
         host="0.0.0.0",
