@@ -17,31 +17,13 @@ ENV UV_LINK_MODE=copy
 ENV PIP_DEFAULT_TIMEOUT=600
 ENV UV_HTTP_TIMEOUT=600
 
-# Create Python virtual environment
-RUN uv venv --python 3.11
-
-# Activate venv for docker run
-ENV VIRTUAL_ENV=/.venv
-ENV PATH=/$VIRTUAL_ENV/bin:$PATH
-
-# Copy project metadata and lock for reproducible deps
-COPY pyproject.toml uv.lock ./
-# Copy workspace packages needed for dependency resolution
-COPY packages ./packages
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --extra dev --no-install-project
-
-# Copy source code into the image
-COPY . /openpi
-
-# Set working directory
+# Set working directory first so everything lands in /openpi
 WORKDIR /openpi
 
-# Install the project so runtime metadata (e.g. importlib.metadata) is present.
-# For local dev containers that bind-mount the repo, run
-# `uv pip install --no-deps -e /openpi` once after start so edits reflect
-# immediately while preserving metadata.
-RUN uv pip install --no-deps .
+
+# Copy source code into the image
+COPY . .
+
 
 # Set Python path
 ENV PYTHONPATH=/openpi

@@ -1,7 +1,8 @@
 .PHONY: all build tag push clean prune help
 
 # Image configuration
-IMAGE_NAME := openpi-training
+# Old: openpi-training -> New: positro/openpi-base
+IMAGE_NAME := positro/openpi-base
 
 # Extract version from pyproject.toml
 VERSION := $(shell grep '^version = ' ../pyproject.toml | sed 's/version = "\(.*\)"/\1/')
@@ -10,13 +11,14 @@ VERSION := $(shell grep '^version = ' ../pyproject.toml | sed 's/version = "\(.*
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
 # Registry URL - can be overridden via environment variable or command line
-# Example: make push REGISTRY_URL=cr.eu-north1.nebius.cloud/e00a0ahqzcp9x0xczz
-REGISTRY_URL ?= cr.eu-north1.nebius.cloud/e00a0ahqzcp9x0xczz
+# Default to empty for Docker Hub (library is default, but for orgs it's just org/image)
+# We can just leave it empty or explicitly docker.io
+REGISTRY_URL ?= docker.io
 
 # Image tags
-TAG_LATEST := $(REGISTRY_URL)/$(IMAGE_NAME):latest
-TAG_VERSION := $(REGISTRY_URL)/$(IMAGE_NAME):v$(VERSION)
-TAG_SHA := $(REGISTRY_URL)/$(IMAGE_NAME):$(GIT_SHA)
+TAG_LATEST := $(IMAGE_NAME):latest
+TAG_VERSION := $(IMAGE_NAME):v$(VERSION)
+TAG_SHA := $(IMAGE_NAME):$(GIT_SHA)
 LOCAL_TAG := $(IMAGE_NAME):local
 
 help:
@@ -50,11 +52,6 @@ build:
 
 tag: build
 	@echo "Tagging image with multiple tags..."
-	@if [ -z "$(REGISTRY_URL)" ]; then \
-		echo "Error: REGISTRY_URL is not set."; \
-		echo "Please set it via: make push REGISTRY_URL=your-registry-url"; \
-		exit 1; \
-	fi
 	docker tag $(LOCAL_TAG) $(TAG_LATEST)
 	docker tag $(LOCAL_TAG) $(TAG_VERSION)
 	docker tag $(LOCAL_TAG) $(TAG_SHA)
@@ -64,12 +61,12 @@ tag: build
 	@echo "  - $(TAG_SHA)"
 
 push: tag
-	@echo "Pushing images to Container Registry..."
+	@echo "Pushing images to Docker Hub..."
 	docker push $(TAG_LATEST)
 	docker push $(TAG_VERSION)
 	docker push $(TAG_SHA)
 	@echo ""
-	@echo "Successfully pushed to Container Registry!"
+	@echo "Successfully pushed to Docker Hub!"
 	@echo "Pull with:"
 	@echo "  docker pull $(TAG_LATEST)"
 
