@@ -255,6 +255,9 @@ def main(config: _config.TrainConfig):
         dynamic_ncols=True,
     )
 
+    # Recreate the LR schedule (it is otherwise hidden inside the optimizer) so we can log it.
+    lr_schedule = config.lr_schedule.create()
+
     infos = []
     for step in pbar:
         with sharding.set_mesh(mesh):
@@ -263,6 +266,7 @@ def main(config: _config.TrainConfig):
         if step % config.log_interval == 0:
             stacked_infos = common_utils.stack_forest(infos)
             reduced_info = jax.device_get(jax.tree.map(jnp.mean, stacked_infos))
+            reduced_info["learning_rate"] = float(lr_schedule(step))
             info_str = ", ".join(f"{k}={v:.4f}" for k, v in reduced_info.items())
             pbar.write(f"Step {step}: {info_str}")
             wandb.log(reduced_info, step=step)
