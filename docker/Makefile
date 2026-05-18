@@ -1,7 +1,7 @@
 .PHONY: all build tag push clean prune help
 
 # Image configuration
-IMAGE_NAME := openpi-training
+IMAGE_NAME := positro/openpi-base
 
 # Extract version from pyproject.toml
 VERSION := $(shell grep '^version = ' ../pyproject.toml | sed 's/version = "\(.*\)"/\1/')
@@ -10,8 +10,9 @@ VERSION := $(shell grep '^version = ' ../pyproject.toml | sed 's/version = "\(.*
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
 # Registry URL - can be overridden via environment variable or command line
+# Defaults to Docker Hub so the image is pushed as positro/openpi-base.
 # Example: make push REGISTRY_URL=cr.eu-north1.nebius.cloud/e00a0ahqzcp9x0xczz
-REGISTRY_URL ?= cr.eu-north1.nebius.cloud/e00a0ahqzcp9x0xczz
+REGISTRY_URL ?= docker.io
 
 # Image tags
 TAG_LATEST := $(REGISTRY_URL)/$(IMAGE_NAME):latest
@@ -46,7 +47,7 @@ build:
 		echo "Error: Could not extract version from pyproject.toml"; \
 		exit 1; \
 	fi
-	docker build -f Dockerfile.training.cloud -t $(LOCAL_TAG) ..
+	docker build --platform linux/amd64 -f Dockerfile.training.cloud -t $(LOCAL_TAG) ..
 
 tag: build
 	@echo "Tagging image with multiple tags..."
