@@ -711,6 +711,23 @@ _CONFIGS = [
             ),
         ),
     ),
+    # DROID in absolute joint-position action space (the RoboLab benchmark policies). The model predicts
+    # joint deltas; AbsoluteActions adds the observed joint position back, so the served chunk is absolute
+    # joint positions. Checkpoint: gs://openpi-assets-simeval/pi05_droid_jointpos.
+    TrainConfig(
+        name="pi05_droid_jointpos",
+        model=pi0_config.Pi0Config(action_horizon=15, pi05=True),
+        data=SimpleDataConfig(
+            assets=AssetsConfig(asset_id="droid"),
+            data_transforms=lambda model: _transforms.Group(
+                inputs=[droid_policy.DroidInputs(model_type=ModelType.PI05)],
+                outputs=[_transforms.AbsoluteActions(_transforms.make_bool_mask(7, -1)), droid_policy.DroidOutputs()],
+            ),
+            base_config=DataConfig(
+                prompt_from_task=True,
+            ),
+        ),
+    ),
     #
     # Fine-tuning Libero configs.
     #
