@@ -25,11 +25,13 @@ class WebsocketPolicyServer:
         host: str = "0.0.0.0",
         port: int | None = None,
         metadata: dict | None = None,
+        warmup_obs: dict | None = None,
     ) -> None:
         self._policy = policy
         self._host = host
         self._port = port
         self._metadata = metadata or {}
+        self._warmup_obs = warmup_obs
         # `infer` runs off the event loop, so the loop answers keepalive pings while the first call compiles.
         # One worker keeps the calls in sequence: the policy keeps state, such as its rng, between calls.
         self._infer_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="policy-infer")
@@ -39,6 +41,11 @@ class WebsocketPolicyServer:
         asyncio.run(self.run())
 
     async def run(self):
+        if self._warmup_obs is not None:
+            # The first inference compiles the model. It runs before the server listens, so no client pays for it.
+            warmup_time = time.monotonic()
+            await self._infer(self._warmup_obs)
+            logger.info("Warm-up inference took %.1f s", time.monotonic() - warmup_time)
         async with _server.serve(
             self._handler,
             self._host,
@@ -48,6 +55,9 @@ class WebsocketPolicyServer:
             process_request=_health_check,
         ) as server:
             await server.serve_forever()
+
+    async def _infer(self, obs: dict) -> dict:
+        return await asyncio.get_running_loop().run_in_executor(self._infer_executor, self._policy.infer, obs)
 
     async def _handler(self, websocket: _server.ServerConnection):
         logger.info(f"Connection from {websocket.remote_address} opened")
@@ -62,7 +72,7 @@ class WebsocketPolicyServer:
                 obs = msgpack_numpy.unpackb(await websocket.recv())
 
                 infer_time = time.monotonic()
-                action = await asyncio.get_running_loop().run_in_executor(self._infer_executor, self._policy.infer, obs)
+                action = await self._infer(obs)
                 infer_time = time.monotonic() - infer_time
 
                 action["server_timing"] = {

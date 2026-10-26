@@ -4,9 +4,11 @@ import contextlib
 import socket
 import threading
 import time
+import urllib.parse
 
 from openpi_client import base_policy as _base_policy
 from openpi_client import msgpack_numpy
+import pytest
 import websockets.sync.client
 
 from openpi.serving import websocket_policy_server
@@ -38,9 +40,9 @@ def _free_port() -> int:
 
 
 @contextlib.contextmanager
-def _serving(policy: _base_policy.BasePolicy):
+def _serving(policy: _base_policy.BasePolicy, warmup_obs: dict | None = None):
     port = _free_port()
-    server = websocket_policy_server.WebsocketPolicyServer(policy, host="127.0.0.1", port=port)
+    server = websocket_policy_server.WebsocketPolicyServer(policy, host="127.0.0.1", port=port, warmup_obs=warmup_obs)
     loop = asyncio.new_event_loop()
     thread = threading.Thread(target=loop.run_forever, daemon=True)
     thread.start()
@@ -100,3 +102,42 @@ def test_infer_calls_from_two_clients_run_one_at_a_time():
         answers = list(clients.map(_infer, [first, second], [1, 2]))
     assert [answer["echo"] for answer in answers] == [1, 2]
     assert policy.max_running == 1
+
+
+class FirstCallPolicy(_base_policy.BasePolicy):
+    """Holds its first `infer` for `first_call_s`, or until `release` is set, and records each observation."""
+
+    def __init__(self, first_call_s: float) -> None:
+        self._first_call_s = first_call_s
+        self.first_call_started = threading.Event()
+        self.release = threading.Event()
+        self.observations: list[dict] = []
+
+    def infer(self, obs: dict) -> dict:
+        self.observations.append(obs)
+        if len(self.observations) == 1:
+            self.first_call_started.set()
+            self.release.wait(timeout=self._first_call_s)
+        return {"echo": obs["value"]}
+
+
+def test_the_server_listens_only_after_the_warm_up_inference_returns():
+    policy = FirstCallPolicy(first_call_s=5.0)
+    with _serving(policy, warmup_obs={"value": 0}) as uri:
+        assert policy.first_call_started.wait(timeout=5)
+        with pytest.raises(ConnectionRefusedError):
+            socket.create_connection(("127.0.0.1", urllib.parse.urlsplit(uri).port), timeout=1)
+        policy.release.set()
+        with _connect(uri) as connection:
+            assert _infer(connection, 7)["echo"] == 7
+    assert [obs["value"] for obs in policy.observations] == [0, 7]
+
+
+def test_a_client_with_keepalive_gets_a_fast_first_answer_after_the_warm_up():
+    with (
+        _serving(FirstCallPolicy(first_call_s=1.0), warmup_obs={"value": 0}) as uri,
+        _connect(uri) as connection,
+    ):
+        answer = _infer(connection, 7)
+    assert answer["echo"] == 7
+    assert answer["server_timing"]["infer_ms"] < 500

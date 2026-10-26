@@ -116,6 +116,7 @@ def main(args: Args) -> None:
         host="0.0.0.0",
         port=args.port,
         metadata=policy_metadata,
+        warmup_obs=_policy_config.make_example_observation(_config.get_config(args.policy.config)),
     )
     server.serve_forever()
 
