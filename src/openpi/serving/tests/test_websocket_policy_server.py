@@ -11,11 +11,9 @@ import websockets.sync.client
 
 from openpi.serving import websocket_policy_server
 
-# The client keepalive runs at a short scale here: a ping each 0.2 s, and a close when no pong comes in 0.2 s.
-# The websockets defaults are 20 s and 20 s, so a first inference that compiles for more than about 40 s
-# drops the connection in the same way.
-PING_INTERVAL_S = 0.2
-PING_TIMEOUT_S = 0.2
+# The websockets client keepalive at a small scale: its default is 20 s and 20 s, and a 40 s compile exceeds it.
+CLIENT_PING_INTERVAL_S = 0.2
+CLIENT_PING_TIMEOUT_S = 0.2
 SLOW_INFER_S = 1.0
 
 
@@ -63,12 +61,12 @@ def _serving(policy: _base_policy.BasePolicy):
 
 
 def _connect(uri: str, *, keepalive: bool = True) -> websockets.sync.client.ClientConnection:
-    ping_interval = PING_INTERVAL_S if keepalive else None
+    ping_interval = CLIENT_PING_INTERVAL_S if keepalive else None
     deadline = time.monotonic() + 5
     while True:
         try:
             connection = websockets.sync.client.connect(
-                uri, compression=None, max_size=None, ping_interval=ping_interval, ping_timeout=PING_TIMEOUT_S
+                uri, compression=None, max_size=None, ping_interval=ping_interval, ping_timeout=CLIENT_PING_TIMEOUT_S
             )
         except ConnectionRefusedError:
             if time.monotonic() > deadline:
