@@ -11,11 +11,6 @@ import websockets.sync.client
 
 from openpi.serving import websocket_policy_server
 
-# The websockets client keepalive at a small scale: its default is 20 s and 20 s, and a 40 s compile exceeds it.
-CLIENT_PING_INTERVAL_S = 0.2
-CLIENT_PING_TIMEOUT_S = 0.2
-SLOW_INFER_S = 1.0
-
 
 class SlowPolicy(_base_policy.BasePolicy):
     """Sleeps in `infer` and records how many calls overlap."""
@@ -60,6 +55,11 @@ def _serving(policy: _base_policy.BasePolicy):
         loop.close()
 
 
+# The websockets client keepalive at a small scale: its default is 20 s and 20 s, and a 40 s compile exceeds it.
+CLIENT_PING_INTERVAL_S = 0.2
+CLIENT_PING_TIMEOUT_S = 0.2
+
+
 def _connect(uri: str, *, keepalive: bool = True) -> websockets.sync.client.ClientConnection:
     ping_interval = CLIENT_PING_INTERVAL_S if keepalive else None
     deadline = time.monotonic() + 5
@@ -83,7 +83,7 @@ def _infer(connection: websockets.sync.client.ClientConnection, value: int) -> d
 
 
 def test_a_slow_infer_keeps_a_client_with_keepalive_connected():
-    with _serving(SlowPolicy(SLOW_INFER_S)) as uri, _connect(uri) as connection:
+    with _serving(SlowPolicy(infer_s=1.0)) as uri, _connect(uri) as connection:
         assert _infer(connection, 7)["echo"] == 7
         assert _infer(connection, 8)["echo"] == 8
 
