@@ -6,6 +6,10 @@ from typing import Any
 import jax.numpy as jnp
 
 import openpi.models.model as _model
+from openpi.policies import aloha_policy
+from openpi.policies import droid_policy
+from openpi.policies import libero_policy
+from openpi.policies import positronic_policy
 import openpi.policies.policy as _policy
 import openpi.shared.download as download
 from openpi.training import checkpoints as _checkpoints
@@ -92,3 +96,21 @@ def create_trained_policy(
         is_pytorch=is_pytorch,
         pytorch_device=pytorch_device if is_pytorch else None,
     )
+
+
+# The example observation in the format that each input transform reads.
+_EXAMPLE_OBSERVATIONS = {
+    aloha_policy.AlohaInputs: aloha_policy.make_aloha_example,
+    droid_policy.DroidInputs: droid_policy.make_droid_example,
+    libero_policy.LiberoInputs: libero_policy.make_libero_example,
+    positronic_policy.PositronicInputs: positronic_policy.make_positronic_example,
+}
+
+
+def make_example_observation(train_config: _config.TrainConfig) -> dict:
+    """An example observation in the input format of `train_config`."""
+    data_config = train_config.data.create(train_config.assets_dirs, train_config.model)
+    for transform in data_config.data_transforms.inputs:
+        if (make_example := _EXAMPLE_OBSERVATIONS.get(type(transform))) is not None:
+            return make_example()
+    raise ValueError(f"No example observation for the input transforms of config {train_config.name!r}.")
