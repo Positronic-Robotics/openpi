@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 import http
 import logging
 import time
@@ -29,6 +30,9 @@ class WebsocketPolicyServer:
         self._host = host
         self._port = port
         self._metadata = metadata or {}
+        # `infer` runs off the event loop, so the loop answers keepalive pings while the first call compiles.
+        # One worker keeps the calls in sequence: the policy keeps state, such as its rng, between calls.
+        self._infer_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="policy-infer")
         logging.getLogger("websockets.server").setLevel(logging.INFO)
 
     def serve_forever(self) -> None:
@@ -58,7 +62,7 @@ class WebsocketPolicyServer:
                 obs = msgpack_numpy.unpackb(await websocket.recv())
 
                 infer_time = time.monotonic()
-                action = self._policy.infer(obs)
+                action = await asyncio.get_running_loop().run_in_executor(self._infer_executor, self._policy.infer, obs)
                 infer_time = time.monotonic() - infer_time
 
                 action["server_timing"] = {
