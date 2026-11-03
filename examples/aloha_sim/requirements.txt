@@ -6,7 +6,7 @@ absl-py==2.1.0
     #   dm-env
     #   labmaze
     #   mujoco
-certifi==2024.8.30
+certifi==2026.10.23
     # via requests
 charset-normalizer==3.4.0
     # via requests
